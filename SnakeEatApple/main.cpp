@@ -56,15 +56,6 @@ public:
 
         // 输入一个方向开始游戏
         if (inputKey != '\0') {
-            // 画出分数 判断是否碰到边界
-            RECT text{0, 0, 200, 200};
-            if (snake.front().x - snakeStep < 0 || snake.front().x + snakeStep >= gWidth
-                || snake.front().y - snakeStep < 0 || snake.front().y + snakeStep >= gHeight) {
-                drawtext(("Game Over! your score is: " + std::to_string(snake.size())).c_str(), &text, DT_LEFT);
-                return false;
-            }
-            drawtext(std::to_string(snake.size()).c_str(), &text, DT_LEFT);
-
             // 移动蛇
             int nextX = snake.front().x;
             int nextY = snake.front().y;
@@ -84,6 +75,17 @@ public:
                 default:
                     break;
             }
+
+            // 画出分数 判断是否碰到边界
+            RECT text{0, 0, 200, 200};
+            if (nextX < 0 || nextX >= gWidth
+                || nextY < 0 || nextY >= gHeight) {
+                drawtext(("Game Over! your score is: " + std::to_string(snake.size())).c_str(), &text, DT_LEFT);
+                return false;
+            }
+            drawtext(std::to_string(snake.size()).c_str(), &text, DT_LEFT);
+
+
             snake.push_front({nextX, nextY});
             if (DEBUG) {
                 std::cout << "key: " << inputKey << '\n';
@@ -103,16 +105,24 @@ public:
                 }
                 std::cout << "next head x: " << snake.front().x << " y : " << snake.front().y << '\n';
             }
-            if (getpixel(snake.front().x + 1, snake.front().y + 1) == RED) {
-                drawSnake();
-                drawApple();
-            } else {
-                setfillcolor(BLACK);
-                solidrectangle(snake.back().x, snake.back().y, snake.back().x + snakeStep, snake.back().y + snakeStep);
-                snake.pop_back();
-                drawSnake();
+            switch (getpixel(snake.front().x + 1, snake.front().y + 1)) {
+                case RED:
+                    drawSnake();
+                    drawApple();
+                    break;
+                case BLACK:
+                    setfillcolor(BLACK);
+                    solidrectangle(snake.back().x, snake.back().y, snake.back().x + snakeStep, snake.back().y + snakeStep);
+                    snake.pop_back();
+                    drawSnake();
+                    break;
+                case WHITE:
+                    drawtext(("Game Over! your score is: " + std::to_string(snake.size() - 1)).c_str(), &text, DT_LEFT);
+                    return false;
+                    break;
+                default:
+                    break;
             }
-
 
         }
         return true;
