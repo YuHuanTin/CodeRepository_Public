@@ -3,6 +3,8 @@
 #include <string>
 #include "Windows.h"
 
+double gIconAttributes = 100;
+
 BOOL cb(HWND hwnd, LPARAM lparam) {
     // 以桌面窗口下的窗口作为父窗口(与Progman同级)寻找SHELLDLL_DefView为类名的窗口
     HWND hDefView = FindWindowEx(hwnd, nullptr, "SHELLDLL_DefView", nullptr);
@@ -11,6 +13,11 @@ BOOL cb(HWND hwnd, LPARAM lparam) {
     if (hDefView != nullptr) {
         // 找它的下一个窗口,为没有SHELLDLL_DefView的WorkerW窗口
         HWND hWorkerw = FindWindowEx(nullptr, hwnd, "WorkerW", nullptr);
+
+        // 设置桌面图标透明度
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW);
+        SetLayeredWindowAttributes(hwnd, 0, (int)(gIconAttributes / 100 * 255), LWA_ALPHA);
+        //UpdateLayeredWindow(hwnd, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr, 0);
 
         HWND *p = (HWND *) lparam;
         *p = hWorkerw;
@@ -41,9 +48,9 @@ void setWallpaper(const std::string &playerClassName) {
     SetWindowLongPtr(hFfplay, GWL_EXSTYLE, WS_EX_NOACTIVATE);
     SetWindowLongPtr(hFfplay, GWL_STYLE, WS_CHILD | WS_VISIBLE);
 }
-
 int main(int argc, char *argv[]) {
     setbuf(stdout, nullptr);
+
     HWND hwd = GetDesktopWindow();
     HDC hdc = GetDC(hwd);
     int width = GetDeviceCaps(hdc, DESKTOPHORZRES);
@@ -51,6 +58,15 @@ int main(int argc, char *argv[]) {
     std::cout << "screen x: " << width << "\nscreen y: " << height << '\n';
 
     std::string s;
+
+    std::cout << "是否需要更改图标透明度(如果需要更改请输入0-100的值):";
+    std::cin >> s;
+    long value = strtol(s.c_str(), nullptr, 10);
+    if (0 <= value && value <= 100) {
+        gIconAttributes = value;
+        std::cout << "透明度已设置为: " << gIconAttributes << '\n';
+    }
+
     std::cout << "请输入壁纸的路径:";
     std::cin >> s;
     std::string lpParameter =
@@ -58,15 +74,19 @@ int main(int argc, char *argv[]) {
 
     std::cout << "请输入ffplay路径:";
     std::cin >> s;
+    if (s.front() == '"' && s.back() == '"') {
+        s = s.substr(1, s.length() - 2);
+    }
 
+    // 启动ffplay
     STARTUPINFO si = {0};
     PROCESS_INFORMATION pi = {nullptr};
     if (CreateProcess(s.c_str(), lpParameter.data(), nullptr, nullptr, 0, 0, nullptr, nullptr, &si, &pi)) {
         Sleep(1000);
         setWallpaper("SDL_app");
-
     }
-    getchar();
+
+    Sleep(2000);
 
     return 0;
 }
