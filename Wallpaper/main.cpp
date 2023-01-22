@@ -35,6 +35,11 @@ void setWallpaper(const std::string &playerClassName) {
 
     // 设置播放视频的窗口设置为Progman的子窗口
     SetParent(hFfplay, hSecondWorker);
+
+
+    // 防止转到窗口但是消失了
+    SetWindowLongPtr(hFfplay, GWL_EXSTYLE, WS_EX_NOACTIVATE);
+    SetWindowLongPtr(hFfplay, GWL_STYLE, WS_CHILD | WS_VISIBLE);
 }
 
 int main(int argc, char *argv[]) {
@@ -59,6 +64,7 @@ int main(int argc, char *argv[]) {
     if (CreateProcess(s.c_str(), lpParameter.data(), nullptr, nullptr, 0, 0, nullptr, nullptr, &si, &pi)) {
         Sleep(1000);
         setWallpaper("SDL_app");
+
     }
     getchar();
 
