@@ -35,7 +35,7 @@ enum WS_MSG_E {
     WS_AUTH_OK = 0,
     WS_AUTH_TOKEN_ERROR = -101
 };
-struct Input {
+struct InputT {
     uint64_t UID = 0;
     uint64_t roomID = 0;
     uint64_t realRoomID = 0;
@@ -45,11 +45,13 @@ struct Input {
     std::string danmuServerPort;
     std::string danmuServerToken;
 };
-struct Env {
+
+struct EnvT {
     bool debug = false;
     bool saveFile = false;
     FILE *fp = nullptr;
-    ~Env(){
+
+    ~EnvT() {
         fclose(fp);
     }
 } gEnv;
@@ -202,7 +204,7 @@ int main() {
     setbuf(stdout, nullptr);
 
     nlohmann::json nJson;
-    Input input;
+    InputT input;
     try {
         // 获取信息
         {
