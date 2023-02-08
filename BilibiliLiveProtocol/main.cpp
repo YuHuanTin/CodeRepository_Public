@@ -8,42 +8,37 @@
 #include <memory>
 #include <string>
 #include <windows.h>
+#include <sstream>
 
 using std::string;
 using std::wstring;
 using std::unique_ptr;
 using std::runtime_error;
 
-
-enum WS_MSG_E {
+enum WS_MsgType_E {
     WS_OP_HEARTBEAT = 2,
     WS_OP_HEARTBEAT_REPLY = 3,
     WS_OP_MESSAGE = 5,
     WS_OP_USER_AUTHENTICATION = 7,
     WS_OP_CONNECT_SUCCESS = 8,
     WS_PACKAGE_HEADER_TOTAL_LENGTH = 16,
-    WS_PACKAGE_OFFSET = 0,
-    WS_HEADER_OFFSET = 4,
-    WS_VERSION_OFFSET = 6,
-    WS_OPERATION_OFFSET = 8,
-    WS_SEQUENCE_OFFSET = 12,
     WS_BODY_PROTOCOL_VERSION_NORMAL = 0,
     WS_BODY_PROTOCOL_VERSION_BROTLI = 3,
     WS_HEADER_DEFAULT_VERSION = 1,
-    WS_HEADER_DEFAULT_OPERATION = 1,
     WS_HEADER_DEFAULT_SEQUENCE = 1,
     WS_AUTH_OK = 0,
     WS_AUTH_TOKEN_ERROR = -101
 };
+
 struct InputT {
     uint64_t UID = 0;
     uint64_t roomID = 0;
     uint64_t realRoomID = 0;
     uint64_t liveUpUID = 0;
 
-    std::string danmuServerHost;
-    std::string danmuServerPort;
-    std::string danmuServerToken;
+    string danmuServerHost;
+    string danmuServerPort;
+    string danmuServerToken;
 };
 
 struct EnvT {
@@ -74,12 +69,12 @@ wstring strToWstr(const string &Src, UINT CodePage) {
     return wszResult;
 }
 
-std::string decompress(const std::string &Data) {
+string decompress(const string &Data) {
     auto instance = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
     if (instance == nullptr)
         throw runtime_error("failed BrotliDecoderCreateInstance");
 
-    std::string result;
+    string result;
     std::array<uint8_t, 4096> buf {};
     size_t availableDataLen = Data.length(), availableBufLen = buf.size();
     auto *pData = (const uint8_t *) Data.c_str();
@@ -96,32 +91,73 @@ std::string decompress(const std::string &Data) {
     return result;
 }
 
-void showDanmu(nlohmann::json &Json) {
-    for (int i = 0; i < Json[0].size(); ++i) {
-        if (Json[0].is_array()) {
+string requestURL(const string &Url) {
+    HttpRequestT httpRequest {Url, "get"};
+    HttpResponseT httpResponse;
+    WinhttpAPI api(httpRequest, httpResponse);
+    api.Request();
+    return httpResponse.Body;
+}
 
-            // 弹幕Json
-            if (Json[0][i]["cmd"] == "DANMU_MSG") {
+void showDanmu(std::vector<nlohmann::json> &vJson) {
+
+    for (int i = 0; i < vJson.size(); ++i) {
+
+        if (vJson[i].contains("/cmd"_json_pointer)) {
+            if (vJson[i].at("/cmd"_json_pointer) == "DANMU_MSG") {
                 std::stringstream ss;
-                ss << "[" << Json[0][i]["info"][3][2] << ":" << Json[0][i]["info"][3][1] << "]" << Json[0][i]["info"][2][1] << "(uid: "
-                   << Json[0][i]["info"][2][0] << "):" << Json[0][i]["info"][1] << '\n';
+                string guardType[] = {{u8"观众"},
+                                      {u8"总督"},
+                                      {u8"提督"},
+                                      {u8"舰长"}};
 
-                std::string gbkStr = wstrToStr(strToWstr(ss.str(), CP_UTF8), CP_ACP);
-                std::cout << gbkStr;
+                string msg = vJson[i].at("/info/1"_json_pointer).is_null() ? "" : vJson[i].at("/info/1"_json_pointer);
+                string userName = vJson[i].at("/info/2/1"_json_pointer);
+                int64_t userID = vJson[i].at("/info/2/0"_json_pointer);
 
+                string fansMedalLabel = u8"未佩戴牌子";
+                string fansMedalAnchorUsername = u8"未佩戴牌子";
+                uint32_t fansMedalLevel = 0;
+                uint32_t guardTypeIndex = 0;
+                uint64_t fansMedalAnchorId = 0;
+                if (!vJson[i].at("/info/3"_json_pointer).empty()) {
+                    fansMedalLabel = vJson[i].at("/info/3/1"_json_pointer);
+                    fansMedalLevel = vJson[i].at("/info/3/0"_json_pointer);
+                    fansMedalAnchorUsername = vJson[i].at("/info/3/2"_json_pointer);
+                    fansMedalAnchorId = vJson[i].at("/info/3/12"_json_pointer);
+                    guardTypeIndex = vJson[i].at("/info/3/10"_json_pointer);
+                }
+                if (gEnv.debug) {
+                    ss << "[" << fansMedalAnchorUsername << "(uid:" << fansMedalAnchorId << ")]<" << fansMedalLabel << " " << fansMedalLevel << ">["
+                       << guardType[guardTypeIndex] << "] " << userName << "(uid:" << userID << ") : " << msg;
+                } else {
+                    ss << "<" << fansMedalLabel << " " << fansMedalLevel << ">[" << guardType[guardTypeIndex] << "] " << userName << "(uid:" << userID << ") : "
+                       << msg;
+                }
+                std::cout << wstrToStr(strToWstr(ss.str(), CP_UTF8), CP_ACP) << '\n';
                 if (gEnv.saveFile) {
-                    fwrite(gbkStr.c_str(), 1, gbkStr.length(), gEnv.fp);
+                    fwrite(ss.str().c_str(), 1, ss.str().length(), gEnv.fp);
                     fflush(gEnv.fp);
                 }
             }
-        }
+        } else if (vJson[i].contains("/popularValue"_json_pointer)) {
+            std::cout << "人气值: " << vJson[i]["popularValue"] << '\n';
+        } else if (vJson[i].contains("/code"_json_pointer)) {
+            if (vJson[i]["code"] == WS_AUTH_OK)
+                std::cout << "连接成功\n";
+            else if (vJson[i]["code"] == WS_AUTH_TOKEN_ERROR)
+                throw runtime_error("Token错误");
+            else throw runtime_error("未知错误");
+        } else throw runtime_error("未知分支");
+
     }
+
 }
 
 class Protocol {
 private:
     struct PackageHeaderT {
-        uint32_t packageSize = 0; // 包括Header的长度
+        uint32_t totalSize = 0; // 包括Header的长度
 
         uint16_t headerLen = 0;
         uint16_t protocolVersion = 0;
@@ -131,73 +167,108 @@ private:
     };
     uint64_t uid = 0;
     uint64_t realRoomID = 0;
-    std::string token;
+    string token;
 public:
-    Protocol(uint64_t Uid, uint64_t RealRoomID, std::string Token) : uid(Uid), realRoomID(RealRoomID), token(std::move(Token)) {}
+    Protocol(uint64_t Uid, uint64_t RealRoomID, string Token) : uid(Uid), realRoomID(RealRoomID), token(std::move(Token)) {}
 
-    std::string MakeAuthenticationPackage() {
+    PackageHeaderT parsePackageHeader(const char *Buf) {
+        PackageHeaderT packageHeader;
+        memcpy(&packageHeader, Buf, WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH);
+        packageHeader.totalSize = ntohl(packageHeader.totalSize);
+        packageHeader.headerLen = ntohs(packageHeader.headerLen);
+        packageHeader.protocolVersion = ntohs(packageHeader.protocolVersion);
+        packageHeader.operation = ntohl(packageHeader.operation);
+        packageHeader.sequenceId = ntohl(packageHeader.sequenceId);
+        return packageHeader;
+    }
+
+    std::vector<nlohmann::json> parsePackageToJson(const string &Buf) {
+        std::vector<nlohmann::json> vJson;
+        for (uint32_t scanPos = 0; scanPos < Buf.length();) {
+            PackageHeaderT packageHeader = parsePackageHeader(Buf.c_str() + scanPos);
+            if (packageHeader.operation == WS_OP_CONNECT_SUCCESS) {
+                vJson.push_back(nlohmann::json::parse(string {Buf.c_str() + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                              packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
+            } else if (packageHeader.operation == WS_OP_HEARTBEAT_REPLY) {
+                // 心跳包返回人气值
+                uint32_t popularValue = *(uint32_t *) (Buf.c_str() + WS_PACKAGE_HEADER_TOTAL_LENGTH);
+                return {{{"popularValue", ntohl(popularValue)}}};
+            } else if (packageHeader.operation == WS_OP_MESSAGE) {
+                try {
+                    if (packageHeader.protocolVersion == WS_BODY_PROTOCOL_VERSION_BROTLI) {
+                        vJson = parsePackageToJson(decompress({Buf.c_str() + scanPos + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                               packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
+                    } else if (packageHeader.protocolVersion == WS_BODY_PROTOCOL_VERSION_NORMAL) {
+                        vJson.push_back(nlohmann::json::parse(string {Buf.c_str() + scanPos + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                                      packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
+                    }
+                } catch (runtime_error &error) {
+                    std::cout << "runtime error: " << error.what() << '\n';
+                } catch (nlohmann::json::parse_error &error) {
+                    std::cout << "Json parse error: " << error.what() << '\n';
+                }
+            }
+            scanPos += packageHeader.totalSize;
+        }
+        return vJson;
+    }
+
+    nlohmann::json parsePackageToJson2(const string &Buf) {
+        nlohmann::json nJson;
+        for (uint32_t scanPos = 0; scanPos < Buf.length();) {
+            PackageHeaderT packageHeader = parsePackageHeader(Buf.c_str() + scanPos);
+            if (packageHeader.operation == WS_OP_CONNECT_SUCCESS) {
+                nJson = nlohmann::json::parse(string {Buf.c_str() + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                      packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH});
+            } else if (packageHeader.operation == WS_OP_HEARTBEAT_REPLY) {
+                // 心跳包返回人气值
+                uint32_t popularValue = *(uint32_t *) (Buf.c_str() + WS_PACKAGE_HEADER_TOTAL_LENGTH);
+                return {{"popularValue", ntohl(popularValue)}};
+            } else if (packageHeader.operation == WS_OP_MESSAGE) {
+                try {
+                    if (packageHeader.protocolVersion == WS_BODY_PROTOCOL_VERSION_BROTLI) {
+                        nJson += parsePackageToJson(decompress({Buf.c_str() + scanPos + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                                packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
+                    } else if (packageHeader.protocolVersion == WS_BODY_PROTOCOL_VERSION_NORMAL) {
+                        nJson += nlohmann::json::parse(string {Buf.c_str() + scanPos + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
+                                                               packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH});
+                    }
+                } catch (runtime_error &error) {
+                    std::cout << "runtime error: " << error.what() << '\n';
+                } catch (nlohmann::json::parse_error &error) {
+                    std::cout << "Json parse error: " << error.what() << '\n';
+                }
+            }
+            scanPos += packageHeader.totalSize;
+        }
+        return nJson;
+    }
+
+    string makePackage(const string &Buf, WS_MsgType_E WsMsg) {
+        uint32_t totalSize = WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH + Buf.length();
+        PackageHeaderT packageHeader;
+        packageHeader.totalSize = htonl(totalSize);
+        packageHeader.headerLen = htons(WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH);
+        packageHeader.protocolVersion = htons(WS_HEADER_DEFAULT_VERSION);
+        packageHeader.operation = htonl((uint32_t) WsMsg);
+        packageHeader.sequenceId = htonl(WS_HEADER_DEFAULT_SEQUENCE);
+
+        string str(totalSize, 0);
+        memcpy((void *) str.c_str(), (void *) &packageHeader, WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH);
+        memcpy((void *) (str.c_str() + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH), Buf.c_str(), Buf.length());
+        return str;
+    }
+
+    string makeAuthenticationPackage() {
         nlohmann::json nJson = {{"uid",      uid},
                                 {"roomid",   realRoomID},
                                 {"protover", 3},
                                 {"platform", "web"},
                                 {"type",     2},
                                 {"key",      token}};
-        return convertToPackage(to_string(nJson), WS_MSG_E::WS_OP_USER_AUTHENTICATION);
-    }
-
-    nlohmann::json convertToJson(const std::string &RecvBuf) {
-        nlohmann::json nJson;
-        for (uint32_t scanPos = 0; scanPos < RecvBuf.length();) {
-            PackageHeaderT packageHeader;
-            memcpy(&packageHeader, RecvBuf.c_str() + scanPos, WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH);
-            packageHeader.packageSize = ntohl(packageHeader.packageSize);
-            packageHeader.headerLen = ntohs(packageHeader.headerLen);
-            packageHeader.protocolVersion = ntohs(packageHeader.protocolVersion);
-            packageHeader.operation = ntohl(packageHeader.operation);
-            packageHeader.sequenceId = ntohl(packageHeader.sequenceId);
-
-            if (packageHeader.operation == WS_OP_HEARTBEAT_REPLY) {
-                return {};
-            }
-            if (packageHeader.protocolVersion == WS_BODY_PROTOCOL_VERSION_BROTLI) {
-                nJson += convertToJson(decompress({RecvBuf.c_str() + scanPos + WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
-                                                   packageHeader.packageSize - WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
-            } else {
-                try {
-                    nJson += nlohmann::json::parse(std::string {RecvBuf.c_str() + scanPos + WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
-                                                                packageHeader.packageSize - WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH});
-                } catch (nlohmann::json::parse_error &error) {
-                    std::cout << "Json parse error: " << error.what() << '\n';
-                }
-            }
-            scanPos += packageHeader.packageSize;
-        }
-        return nJson;
-    }
-
-    std::string convertToPackage(const std::string &Str, WS_MSG_E WsMsg) {
-        uint32_t totalSize = WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH + Str.length();
-        PackageHeaderT packageHeader;
-        packageHeader.packageSize = htonl(totalSize);
-        packageHeader.headerLen = htons(16);
-        packageHeader.protocolVersion = htons(1);
-        packageHeader.operation = htonl((uint32_t) WsMsg);
-        packageHeader.sequenceId = htonl(1);
-
-        std::string str(totalSize, 0);
-        memcpy((void *) str.c_str(), (void *) &packageHeader, WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH);
-        memcpy((void *) (str.c_str() + WS_MSG_E::WS_PACKAGE_HEADER_TOTAL_LENGTH), Str.c_str(), Str.length());
-        return str;
+        return makePackage(to_string(nJson), WS_MsgType_E::WS_OP_USER_AUTHENTICATION);
     }
 };
-
-std::string requestURL(const std::string &Url) {
-    HttpRequestT httpRequest {Url, "get"};
-    HttpResponseT httpResponse;
-    WinhttpAPI api(httpRequest, httpResponse);
-    api.Request();
-    return httpResponse.Body;
-}
 
 int main() {
     srand(time(nullptr));
@@ -225,7 +296,7 @@ int main() {
 
         // 获取真实房间号
         {
-            std::string responseBody = requestURL("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + std::to_string(input.roomID));
+            string responseBody = requestURL("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + std::to_string(input.roomID));
             nJson = nlohmann::json::parse(responseBody);
             input.realRoomID = nJson["data"]["room_id"];
             input.liveUpUID = nJson["data"]["uid"];
@@ -251,18 +322,25 @@ int main() {
         {
             Protocol danmuProtocol(input.UID, input.realRoomID, input.danmuServerToken);
 
-            if (!ix::initNetSystem())
-                throw runtime_error("failed initNetSystem");
+            if (!ix::initNetSystem()) throw runtime_error("failed initNetSystem");
 
             ix::WebSocket webSocket;
             webSocket.setUrl("wss://" + input.danmuServerHost + ":" + input.danmuServerPort + "/sub");
 
             webSocket.setOnMessageCallback([&danmuProtocol, &webSocket](const ix::WebSocketMessagePtr &msg) {
                 if (msg->type == ix::WebSocketMessageType::Message) {
-                    nlohmann::json json = danmuProtocol.convertToJson(msg->str);
-                    showDanmu(json);
+                    try {
+                        std::vector<nlohmann::json> vJson = danmuProtocol.parsePackageToJson(msg->str);
+                        showDanmu(vJson);
+                    } catch (runtime_error &error) {
+                        std::cout << "runtime error: " << error.what() << '\n';
+                    } catch (nlohmann::json::parse_error &error) {
+                        std::cout << "Json parse error: " << error.what() << '\n';
+                    } catch (nlohmann::json::exception &exception) {
+                        std::cout << "Json exception error: " << exception.what() << '\n';
+                    }
                 } else if (msg->type == ix::WebSocketMessageType::Open) {
-                    if (!webSocket.sendBinary(danmuProtocol.MakeAuthenticationPackage()).success)
+                    if (!webSocket.sendBinary(danmuProtocol.makeAuthenticationPackage()).success)
                         throw runtime_error("failed send auth package");
                 } else if (msg->type == ix::WebSocketMessageType::Error) {
                     std::cout << "Connection error: " << msg->errorInfo.reason << std::endl;
@@ -277,7 +355,7 @@ int main() {
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                     auto status = webSocket.getReadyState();
                     if (status == ix::ReadyState::Open) {
-                        if (!webSocket.sendBinary(danmuProtocol.convertToPackage("[object Object]", WS_OP_HEARTBEAT)).success)
+                        if (!webSocket.sendBinary(danmuProtocol.makePackage("[object Object]", WS_OP_HEARTBEAT)).success)
                             throw runtime_error("failed send heart package");
                         std::this_thread::sleep_for(std::chrono::seconds(10));
                     } else if (status == ix::ReadyState::Closed) {
@@ -287,12 +365,12 @@ int main() {
             }).join();
 
             webSocket.stop();
+            ix::uninitNetSystem();
         }
-
     } catch (runtime_error &error) {
         std::cout << "runtime error: " << error.what() << '\n';
     } catch (nlohmann::json::parse_error &error) {
-        std::cout << "json parse error: " << error.what() << '\n';
+        std::cout << "Json parse error: " << error.what() << '\n';
     }
     return 0;
 }
