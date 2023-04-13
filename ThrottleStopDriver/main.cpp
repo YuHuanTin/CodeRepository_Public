@@ -1,4 +1,6 @@
 void cpuSetting(bool DisableC1E = true) {
+    
+    // 注意: 请先手动注册 ThrottleStop 驱动,这里推荐使用 ProcessHack (github有) '创建服务',类型为'驱动',启动类型为'需求启动'
     system("sc start ThrottleStop");
 
     HANDLE hDevice = CreateFile(R"(\\.\ThrottleStop)", GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
