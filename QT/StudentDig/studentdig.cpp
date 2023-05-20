@@ -11,7 +11,6 @@
 #include "ui_studentdig.h"
 #include <iostream>
 
-
 StudentDig::StudentDig(QWidget *parent)
         : QDialog(parent), ui(new Ui::StudentDig) {
     ui->setupUi(this);
@@ -28,7 +27,7 @@ StudentDig::~StudentDig() {
 }
 
 void StudentDig::on_pushButtonSort_clicked() {
-    QMessageBox::information(nullptr, "msg", __FUNCTION__);
+    ui->tableWidget->sortByColumn(ui->comboBoxValue->currentIndex(), Qt::SortOrder(ui->comboBoxCond->currentIndex()));
 }
 
 void StudentDig::on_pushButton_INSERT_clicked() {
@@ -71,11 +70,11 @@ void StudentDig::on_pushButton_DELETE_clicked() {
             deleteRows.append(list.at(i)->row());
         }
     }
-    // ´ÓÏÂÍùÉÏÉ¾³ý
+    // ä»Žä¸‹å¾€ä¸Šåˆ é™¤
     for (auto i = deleteRows.rbegin(); i != deleteRows.rend(); ++i) {
-        // ¸ù¾Ý ID É¾³ýÊý¾Ý¿â¼ÇÂ¼
-        // Èç¹ûÉ¾³ý³É¹¦Ôò ui Ò²É¾³ý¸ÃÌõ¼ÇÂ¼
-        // Èç¹ûÉ¾³ýÊ§°ÜÔò²»É¾³ýui¼ÇÂ¼ºÍsql¼ÇÂ¼
+        // æ ¹æ® ID åˆ é™¤æ•°æ®åº“è®°å½•
+        // å¦‚æžœåˆ é™¤æˆåŠŸåˆ™ ui ä¹Ÿåˆ é™¤è¯¥æ¡è®°å½•
+        // å¦‚æžœåˆ é™¤å¤±è´¥åˆ™ä¸åˆ é™¤uiè®°å½•å’Œsqlè®°å½•
         unsigned id = ui->tableWidget->item(*i, 0)->text().toUInt();
         if (deleteTableFunc(id)) {
             ui->tableWidget->removeRow(*i);
@@ -84,10 +83,12 @@ void StudentDig::on_pushButton_DELETE_clicked() {
 }
 
 void StudentDig::on_pushButton_UPDATE_clicked() {
-    auto lists = ui->tableWidget->selectedItems();
-    for (int i = 0; i < lists.size(); ++i) {
-        QMessageBox::information(nullptr, QString::number(lists.at(i)->row()), "", QMessageBox::Ok);
-    }
+//    auto lists = ui->tableWidget->selectedItems();
+//    for (auto list : lists) {
+//        QMessageBox::information(nullptr, QString::number(list->row()), "", QMessageBox::Ok);
+//    }
+    QMessageBox::information(nullptr, "tips", "auto save data to database, direct change data in tableWidget please",
+                             QMessageBox::Ok);
 }
 
 void StudentDig::on_pushButton_QUERY_clicked() {
@@ -97,7 +98,7 @@ void StudentDig::on_pushButton_QUERY_clicked() {
 
     QStringList result = queryTableFunc();
 
-    // ÉèÖÃ QTableWidget µÄÐÐÊýºÍ±íÍ·
+    // è®¾ç½® QTableWidget çš„è¡Œæ•°å’Œè¡¨å¤´
     ui->tableWidget->setColumnCount(3);
     ui->tableWidget->setHorizontalHeaderLabels(QStringList() << "id" << "name" << "score");
 
@@ -125,13 +126,13 @@ void StudentDig::on_tableWidget_itemPressed(QTableWidgetItem *Item) {
 }
 
 void StudentDig::createDatabaseFunc() {
-    // Ìí¼ÓÊý¾Ý¿âÇý¶¯
+    // æ·»åŠ æ•°æ®åº“é©±åŠ¨
     sqlDatabase = QSqlDatabase::addDatabase("QSQLITE");
 
-    // ÉèÖÃÊý¾Ý¿âÃû³Æ
+    // è®¾ç½®æ•°æ®åº“åç§°
     sqlDatabase.setDatabaseName("studentmis.db");
 
-    // ´ò¿ªÊý¾Ý¿âÊÇ·ñ³É¹¦
+    // æ‰“å¼€æ•°æ®åº“æ˜¯å¦æˆåŠŸ
     if (!sqlDatabase.open()) {
         QMessageBox::critical(nullptr, "failed", "open database failed!", QMessageBox::Ok);
     }
@@ -139,13 +140,13 @@ void StudentDig::createDatabaseFunc() {
 
 void StudentDig::createTableFunc() {
     QSqlQuery createQuery;
-    // ´´½¨ SQL Óï¾ä
+    // åˆ›å»º SQL è¯­å¥
     QString sqlStr = QString("CREATE TABLE IF NOT EXISTS student("
                              "id int primary key not null,"
                              "name text not null,"
                              "score real not null)"
     );
-    // Ö´ÐÐ SQL Óï¾ä
+    // æ‰§è¡Œ SQL è¯­å¥
     if (!createQuery.exec(sqlStr)) {
         QMessageBox::critical(nullptr, "failed", "create table failed!", QMessageBox::Ok);
     }
@@ -156,7 +157,7 @@ QStringList StudentDig::queryTableFunc() {
 
     sqlQuery.exec("select * from student");
 
-    // »ñÈ¡ÁÐÊý
+    // èŽ·å–åˆ—æ•°
 //    auto colNum = sqlQuery.record().count();
     QStringList result;
     while (sqlQuery.next()) {
