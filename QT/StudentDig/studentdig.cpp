@@ -18,6 +18,9 @@ StudentDig::StudentDig(QWidget *parent)
     createDatabaseFunc();
 
     createTableFunc();
+
+    // 列表框设置自动列宽
+    ui->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
 }
 
 StudentDig::~StudentDig() {
