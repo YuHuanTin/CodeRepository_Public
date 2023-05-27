@@ -2,6 +2,11 @@
 
 若要增删改查查找的颜色色块，则修改
 ```c++
-cv::Vec4b jingjin(52, 26, 128, 0xff);
-cv::Vec4b glodenBoxLocked(94, 207, 233, 0xff);
+
+    std::vector<findPixel> insertJsonDatas {
+            {u8"精金矿",   52, 26,  128, 0xff},
+            {u8"金色宝箱", 94, 207, 233, 0xff}
+    };
 ```
+并且运行函数`writeConfig()`
+
