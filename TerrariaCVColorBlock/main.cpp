@@ -1,10 +1,23 @@
-#include <chrono>
+#include <opencv2/opencv.hpp>
+#include <nlohmann/json.hpp>
+#include <fstream>
 #include <ios>
 #include <iostream>
-#include <opencv2/opencv.hpp>
 #include <Windows.h>
+#include <set>
+#include <stdint.h>
 #include <string>
-#include <vector>
+
+struct warpCvVec4b : public cv::Vec4b {
+    using cv::Vec4b::Vec;
+    bool operator<(const warpCvVec4b &R) const {
+        if (this->val[0] < R.val[0]) return true;
+        if (this->val[1] < R.val[1]) return true;
+        if (this->val[2] < R.val[2]) return true;
+        return false;
+    }
+};
+
 
 // 获取系统DPI缩放值
 extern double getDPI();
@@ -12,13 +25,18 @@ extern double getDPI();
 // 创建cv窗口
 extern HWND createShowWindow(double);
 
+// 寻找窗口
 extern HWND findTerrariaWindow();
 
 // 对窗口区域进行截图
 extern cv::Mat getWindowCaptureData(HWND, HWND, double);
 
 // 处理遮罩
-extern cv::Mat dataFilter(cv::Mat &, double);
+extern cv::Mat dataFilter(cv::Mat &, double, std::set<warpCvVec4b> &);
+
+extern std::set<warpCvVec4b> readConfig();
+
+extern void writeConfig();
 
 const std::string windowTitle = "TerrariaCVColorBlock";
 
@@ -26,13 +44,17 @@ int main() {
     std::cout << std::unitbuf;
     try {
         double dpi = getDPI();
+
+//        writeConfig();
+        std::set<warpCvVec4b> findColors = readConfig();
+
         HWND cvWindowHWND = createShowWindow(dpi);
         HWND terrariaWindowHWND = findTerrariaWindow();
         while (true) {
             if (GetForegroundWindow() == terrariaWindowHWND) {
                 SetLayeredWindowAttributes(cvWindowHWND, RGB(0, 0, 0), 255, LWA_ALPHA | LWA_COLORKEY);
                 cv::Mat data = getWindowCaptureData(cvWindowHWND, terrariaWindowHWND, dpi);
-                data = dataFilter(data, dpi);
+                data = dataFilter(data, dpi, findColors);
                 cv::imshow(windowTitle, data);
                 cv::waitKey(20);
             } else {
@@ -47,7 +69,58 @@ int main() {
     cv::destroyAllWindows();
 }
 
-cv::Mat dataFilter(cv::Mat &MatData, double DPI) {
+void writeConfig() {
+    struct findPixel {
+        std::string name; // require unique
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+        uint8_t alpha;
+    };
+    std::vector<findPixel> insertJsonDatas {
+            {u8"精金矿",   52, 26,  128, 0xff},
+            {u8"金色宝箱", 94, 207, 233, 0xff}
+    };
+    nlohmann::json nJson;
+    for (int i = 0; i < insertJsonDatas.size(); ++i) {
+        nJson[i][insertJsonDatas[i].name]["r"] = insertJsonDatas[i].r;
+        nJson[i][insertJsonDatas[i].name]["g"] = insertJsonDatas[i].g;
+        nJson[i][insertJsonDatas[i].name]["b"] = insertJsonDatas[i].b;
+        nJson[i][insertJsonDatas[i].name]["alpha"] = insertJsonDatas[i].alpha;
+    }
+
+    std::fstream fstream("config.json", std::ios_base::out | std::ios_base::binary);
+    std::string tmp = nJson.dump(4);
+    fstream.write(tmp.data(), tmp.length());
+    fstream.close();
+}
+
+std::set<warpCvVec4b> readConfig() {
+    std::set<warpCvVec4b> p;
+
+    std::fstream fstream("config.json");
+    if (!fstream) throw std::runtime_error("can't find config.nJson at current directory");
+    fstream.seekg(0, std::ios_base::end);
+    size_t fileSize = fstream.tellg();
+    fstream.seekg(0, std::ios_base::beg);
+    std::string tmp(fileSize, '\0');
+    fstream.read(tmp.data(), fileSize);
+
+    nlohmann::json nJson(nlohmann::json::parse(tmp));
+    for (const auto &item: nJson) {
+        for (const auto &element: item.items()) {
+            std::cout << "Name: " << element.key() << std::endl;
+            const auto &color = element.value();
+
+            warpCvVec4b p2(color["r"], color["g"], color["b"], color["alpha"]);
+            p.insert(p2);
+        }
+    }
+    if (p.empty()) throw std::runtime_error("json element is empty");
+    return p;
+}
+
+cv::Mat dataFilter(cv::Mat &MatData, double DPI, std::set<warpCvVec4b> &RequestColors) {
     auto &h = MatData.rows;
     auto &w = MatData.cols;
 
@@ -55,9 +128,8 @@ cv::Mat dataFilter(cv::Mat &MatData, double DPI) {
     for (int y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             auto &color = MatData.at<cv::Vec4b>(y, x);
-            cv::Vec4b jingjin(52, 26, 128, 0xff);
-            cv::Vec4b glodenBoxLocked(94, 207, 233, 0xff);
-            if (glodenBoxLocked == color || jingjin == color) {
+            auto &tr = (warpCvVec4b &) color;
+            if (RequestColors.count(tr) == 1) {
                 targetPixels.emplace_back(x, y);
                 continue;
             }
@@ -67,7 +139,7 @@ cv::Mat dataFilter(cv::Mat &MatData, double DPI) {
             color[3] = 0;
         }
     }
-    for (auto &targetPixel : targetPixels) {
+    for (auto &targetPixel: targetPixels) {
         POINT curPoint;
         GetCursorPos(&curPoint);
         cv::line(MatData, targetPixel, cv::Point(curPoint.x * DPI, curPoint.y * DPI - 22),
