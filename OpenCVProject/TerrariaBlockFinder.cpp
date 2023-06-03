@@ -10,9 +10,8 @@
 
 struct warpCvVec4b : public cv::Vec4b {
     using cv::Vec4b::Vec;
-    
     /**
-     *  è¿™ä¸ªé‡è½½æœ‰å¯èƒ½æœ‰é—®é¢˜
+     *  Õâ¸öÖØÔØÓĞ¿ÉÄÜÓĞÎÊÌâ
      */
     bool operator<(const warpCvVec4b &R) const {
         if (this->val[0] < R.val[0]) return false;
@@ -20,22 +19,26 @@ struct warpCvVec4b : public cv::Vec4b {
         if (this->val[2] < R.val[2]) return false;
         return true;
     }
+
+//    friend  warpCvVec4b operator()(const warpCvVec4b &l, const warpCvVec4b &r) {
+//        return l;
+//    }
 };
 
 
-// è·å–ç³»ç»ŸDPIç¼©æ”¾å€¼
+// »ñÈ¡ÏµÍ³DPIËõ·ÅÖµ
 extern double getDPI();
 
-// åˆ›å»ºcvçª—å£
+// ´´½¨cv´°¿Ú
 extern HWND createShowWindow(double);
 
-// å¯»æ‰¾çª—å£
+// Ñ°ÕÒ´°¿Ú
 extern HWND findTerrariaWindow();
 
-// å¯¹çª—å£åŒºåŸŸè¿›è¡Œæˆªå›¾
+// ¶Ô´°¿ÚÇøÓò½øĞĞ½ØÍ¼
 extern cv::Mat getWindowCaptureData(HWND, HWND, double);
 
-// å¤„ç†é®ç½©
+// ´¦ÀíÕÚÕÖ
 extern cv::Mat dataFilter(cv::Mat &, double, std::set<warpCvVec4b> &);
 
 extern std::set<warpCvVec4b> readConfig();
@@ -82,8 +85,8 @@ void writeConfig() {
         uint8_t alpha;
     };
     std::vector<findPixel> insertJsonDatas {
-            {u8"ç²¾é‡‘çŸ¿",   52, 26,  128, 0xff},
-            {u8"é‡‘è‰²å®ç®±", 94, 207, 233, 0xff}
+            {u8"¾«½ğ¿ó",   52, 26,  128, 0xff},
+            {u8"½ğÉ«±¦Ïä", 94, 207, 233, 0xff}
     };
     nlohmann::json nJson;
     for (int i = 0; i < insertJsonDatas.size(); ++i) {
@@ -100,10 +103,10 @@ void writeConfig() {
 }
 
 std::set<warpCvVec4b> readConfig() {
-    std::set<warpCvVec4b> p;
+    std::set<warpCvVec4b> jsonElements;
 
     std::fstream fstream("config.json");
-    if (!fstream) throw std::runtime_error("can't find config.nJson at current directory");
+    if (!fstream) throw std::runtime_error("can't find config.json at current directory");
     fstream.seekg(0, std::ios_base::end);
     size_t fileSize = fstream.tellg();
     fstream.seekg(0, std::ios_base::beg);
@@ -117,11 +120,11 @@ std::set<warpCvVec4b> readConfig() {
             const auto &color = element.value();
 
             warpCvVec4b p2(color["r"], color["g"], color["b"], color["alpha"]);
-            p.insert(p2);
+            jsonElements.insert(p2);
         }
     }
-    if (p.empty()) throw std::runtime_error("json element is empty");
-    return p;
+    if (jsonElements.empty()) throw std::runtime_error("json element is empty");
+    return jsonElements;
 }
 
 cv::Mat dataFilter(cv::Mat &MatData, double DPI, std::set<warpCvVec4b> &RequestColors) {
@@ -163,7 +166,7 @@ cv::Mat getWindowCaptureData(HWND CvWindowHWND, HWND CaptureWindowHWND, double D
     int captureWindowHeight = (captureWindowRect.bottom - captureWindowRect.top) * DPI;
     int captureWindowWidth = (captureWindowRect.right - captureWindowRect.left) * DPI;
 
-    // æˆªå›¾
+    // ½ØÍ¼
     HDC captureDC = GetDC(CaptureWindowHWND);
     HDC memDC = CreateCompatibleDC(captureDC);
     HBITMAP hBitmap = CreateCompatibleBitmap(captureDC, cvWindowWidth, cvWindowHeight);
@@ -171,12 +174,12 @@ cv::Mat getWindowCaptureData(HWND CvWindowHWND, HWND CaptureWindowHWND, double D
 
     BitBlt(memDC, 0, 0, captureWindowWidth, captureWindowHeight, captureDC, 0, 0, SRCCOPY);
 
-    // æ‹·è´æ•°æ®åˆ°cv::Mat
+    // ¿½±´Êı¾İµ½cv::Mat
     cv::Mat mat(cvWindowHeight, cvWindowWidth, CV_8UC4);
     BITMAPINFOHEADER bi = {sizeof(bi), cvWindowWidth, -cvWindowHeight, 1, 32, BI_RGB};
     GetDIBits(captureDC, hBitmap, 0, cvWindowHeight, mat.data, (BITMAPINFO *) &bi, DIB_RGB_COLORS);
 
-    // é‡Šæ”¾
+    // ÊÍ·Å
     SelectObject(memDC, oldbmp);
     DeleteDC(memDC);
     DeleteObject(hBitmap);
@@ -187,7 +190,7 @@ cv::Mat getWindowCaptureData(HWND CvWindowHWND, HWND CaptureWindowHWND, double D
 BOOL CALLBACK EnumWindowsProc(_In_ HWND hwnd, _In_ LPARAM lParam) {
     std::string buf(256, '\0');
     GetWindowText(hwnd, buf.data(), 255);
-    if (buf.find("æ³°æ‹‰ç‘äºš") != std::string::npos) {
+    if (buf.find("Ì©À­ÈğÑÇ") != std::string::npos) {
         *(HWND *) (lParam) = hwnd;
         return FALSE;
     }
@@ -210,19 +213,19 @@ HWND createShowWindow(double DPI) {
     int iWidth = GetSystemMetrics(SM_CXSCREEN) * DPI;
     int iHeight = GetSystemMetrics(SM_CYSCREEN) * DPI;
 
-    // å»æ‰æ ‡é¢˜æ åŠè¾¹æ¡†
+    // È¥µô±êÌâÀ¸¼°±ß¿ò
     long Style = GetWindowLongPtr(cvWindowHWND, GWL_STYLE);
     Style = Style & ~WS_CAPTION & ~WS_SYSMENU & ~WS_SIZEBOX;
     SetWindowLongPtr(cvWindowHWND, GWL_STYLE, Style);
 
-    // è‡³é¡¶å±‚çª—å£ æœ€å¤§åŒ–
-    SetWindowPos(cvWindowHWND, HWND_TOPMOST, 0, 22, iWidth, iHeight, SWP_SHOWWINDOW);
+    // ÖÁ¶¥²ã´°¿Ú ×î´ó»¯
+//    SetWindowPos(cvWindowHWND, HWND_TOPMOST, 0, 22, iWidth, iHeight, SWP_SHOWWINDOW);
 
-    // è®¾ç½®çª—å£é€æ˜
+    // ÉèÖÃ´°¿ÚÍ¸Ã÷
     SetWindowLong(cvWindowHWND, GWL_EXSTYLE, WS_EX_LAYERED);
     SetLayeredWindowAttributes(cvWindowHWND, RGB(0, 0, 0), 255, LWA_ALPHA | LWA_COLORKEY);
 
-    // è®¾ç½®é¼ æ ‡ç©¿é€
+    // ÉèÖÃÊó±ê´©Í¸
     SetWindowLong(cvWindowHWND, GWL_EXSTYLE, WS_EX_TRANSPARENT | WS_EX_LAYERED);
     return cvWindowHWND;
 }
