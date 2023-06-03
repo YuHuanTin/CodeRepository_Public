@@ -10,11 +10,15 @@
 
 struct warpCvVec4b : public cv::Vec4b {
     using cv::Vec4b::Vec;
+    
+    /**
+     *  这个重载有可能有问题
+     */
     bool operator<(const warpCvVec4b &R) const {
-        if (this->val[0] < R.val[0]) return true;
-        if (this->val[1] < R.val[1]) return true;
-        if (this->val[2] < R.val[2]) return true;
-        return false;
+        if (this->val[0] < R.val[0]) return false;
+        if (this->val[1] < R.val[1]) return false;
+        if (this->val[2] < R.val[2]) return false;
+        return true;
     }
 };
 
