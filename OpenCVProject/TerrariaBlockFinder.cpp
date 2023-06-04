@@ -33,7 +33,7 @@ extern double getDPI();
 extern HWND createShowWindow(double);
 
 // 寻找窗口
-extern HWND findTerrariaWindow();
+extern HWND findWindow();
 
 // 对窗口区域进行截图
 extern cv::Mat getWindowCaptureData(HWND, HWND, double);
@@ -56,7 +56,7 @@ int main() {
         std::set<warpCvVec4b> findColors = readConfig();
 
         HWND cvWindowHWND = createShowWindow(dpi);
-        HWND terrariaWindowHWND = findTerrariaWindow();
+        HWND terrariaWindowHWND = findWindow();
         while (true) {
             if (GetForegroundWindow() == terrariaWindowHWND) {
                 SetLayeredWindowAttributes(cvWindowHWND, RGB(0, 0, 0), 255, LWA_ALPHA | LWA_COLORKEY);
@@ -197,7 +197,7 @@ BOOL CALLBACK EnumWindowsProc(_In_ HWND hwnd, _In_ LPARAM lParam) {
     return TRUE;
 }
 
-HWND findTerrariaWindow() {
+HWND findWindow() {
     HWND gameHWND = nullptr;
     EnumWindows(EnumWindowsProc, (LPARAM) &gameHWND);
     return gameHWND;
