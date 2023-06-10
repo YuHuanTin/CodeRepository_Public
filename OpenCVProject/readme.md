@@ -11,3 +11,7 @@
 # TerrariaBlockFinder
 
 一款针对泰拉瑞亚的地图色块查找器
+
+# ImageShuffler
+
+一款对于各格式图像的打乱与复原工具
