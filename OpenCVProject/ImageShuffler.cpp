@@ -1,13 +1,9 @@
 //
 // Created by YuHuanTin on 2023/6/10.
 //
-#include "fmt/core.h"
-#include "opencv2/core.hpp"
-#include "opencv2/core/mat.hpp"
-#include "opencv2/core/types.hpp"
-#include "opencv2/highgui.hpp"
+
 #include <algorithm>
-#include <cstddef>
+#include <iostream>
 #include <opencv2/opencv.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
@@ -22,16 +18,20 @@ struct Randomer {
 
 void showImageInfo(cv::Mat &Image) {
     fmt::println("image height: {}\nimage width: {}", Image.rows, Image.cols);
-    for (int i = 2; i <= Image.rows; ++i) {
+    std::vector<std::size_t> splitSize;
+    for (int i = 1; i <= Image.rows; ++i) {
         if (Image.rows % i == 0) {
-            fmt::println("height can split with: {}", i);
+            splitSize.emplace_back(i);
         }
     }
-    for (int i = 2; i <= Image.cols; ++i) {
+    fmt::println("block height can set: {}", splitSize);
+    splitSize.clear();
+    for (int i = 1; i <= Image.cols; ++i) {
         if (Image.cols % i == 0) {
-            fmt::println("width can split with: {}", i);
+            splitSize.emplace_back(i);
         }
     }
+    fmt::println("block width can set: {}", splitSize);
 }
 
 cv::Mat encode(cv::Mat &Image, const Randomer &RandomerParam) {
@@ -91,21 +91,22 @@ cv::Mat decode(cv::Mat &Image, const Randomer &RandomerParam) {
 
 int main() {
     using namespace cv;
-    Mat img = imread("D:\\我的文件\\IDM\\下载文件-IDM\\0.png");
+    std::cout << std::unitbuf;
 
-//    showImageInfo(img);
+    Mat img = imread("..\\fp_jqsh.png");
+
+    showImageInfo(img);
 
     Randomer randomerParam;
     randomerParam.blockHeight = 1;
-    randomerParam.blockWidth = 1;
+    randomerParam.blockWidth = 13;
     randomerParam.randomSeed = 11111;
-    Mat result = encode(img, randomerParam);
-
-    Mat raw = decode(result, randomerParam);
+    Mat encodeImage = encode(img, randomerParam);
+    Mat decodeImage = decode(encodeImage, randomerParam);
 
     namedWindow("en", WINDOW_NORMAL);
     namedWindow("de", WINDOW_NORMAL);
-    imshow("en", result);
-    imshow("de", raw);
+    imshow("en", encodeImage);
+    imshow("de", decodeImage);
     waitKey(0);
 }
