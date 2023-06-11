@@ -2,13 +2,15 @@
 // Created by YuHuanTin on 2023/6/10.
 //
 
-#include <algorithm>
-#include <iostream>
+#include "opencv2/highgui.hpp"
+#include <cstdio>
 #include <opencv2/opencv.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <exception>
+#include <iostream>
 #include <random>
-#include <vector>
+#include <unordered_map>
 
 struct Randomer {
     std::size_t blockHeight = 0;
@@ -89,24 +91,108 @@ cv::Mat decode(cv::Mat &Image, const Randomer &RandomerParam) {
     return result;
 }
 
-int main() {
+/**
+ *  // 展示图片信息 输出可选的分块大小
+ *  ImageShuffle.exe -type info -i input.png
+ *
+ *  // 对图像进行打乱
+ *  ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type encode
+ *
+ *  // 对图片进行还原
+ *  ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type decode
+ *
+ *  -type           indicate what to do
+ *  -i              inputImage
+ *  -o              outputImage         optional (output.png)
+ *  -w              blockWidth          optional (1)
+ *  -h              blockHeight         optional (1)
+ *  -seed           randomSeed          optional (31415926)
+ *
+ *  Warning, please do not convert to jpg, the color may change, it is recommended to convert to png format
+ */
+
+int main(int argc, char *argv[]) {
     using namespace cv;
     std::cout << std::unitbuf;
 
-    Mat img = imread("..\\fp_jqsh.png");
+    if (argc == 1) {
+        fmt::println("展示图片信息 输出可选的分块大小\n"
+                     "ImageShuffle.exe -type info -i input.png\n"
+                     "对图像进行打乱\n"
+                     "ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type encode\n"
+                     "对图片进行还原\n"
+                     "ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type decode\n\n"
+                     "-type           indicate what to do\n"
+                     "-i              inputImage\n"
+                     "-o              outputImage         optional (output.png)\n"
+                     "-w              blockWidth          optional (1)\n"
+                     "-h              blockHeight         optional (1)\n"
+                     "-seed           randomSeed          optional (31415926)\n"
+                     "Warning, please do not convert to jpg, the color may change, it is recommended to convert to png format\n"
+        );
+        std::getchar();
+        exit(0);
+    }
+    try {
+        // load args
+        std::unordered_map<std::string, std::string> args;
+        for (int i = 0; i < argc; ++i) {
+            if (argv == nullptr) throw std::runtime_error("bad argument because of null pointer");
+            if (argv[i][0] == '-') {
+                if (argv[i + 1] == nullptr || argv[i + 1][0] == '-')
+                    throw std::runtime_error("arguments with no options provided");
+                else args[argv[i] + 1] = argv[i + 1];
+            }
+        }
 
-    showImageInfo(img);
+        fmt::println("args: {}", args);
 
-    Randomer randomerParam;
-    randomerParam.blockHeight = 1;
-    randomerParam.blockWidth = 13;
-    randomerParam.randomSeed = 11111;
-    Mat encodeImage = encode(img, randomerParam);
-    Mat decodeImage = decode(encodeImage, randomerParam);
+        // parse args
+        std::string &type = args.at("type");
 
-    namedWindow("en", WINDOW_NORMAL);
-    namedWindow("de", WINDOW_NORMAL);
-    imshow("en", encodeImage);
-    imshow("de", decodeImage);
-    waitKey(0);
+        // operate on image
+        Mat inputImage, outputImage;
+        Randomer randomer;
+        inputImage = imread(args.at("i"));
+        if (type == "info") {
+            showImageInfo(inputImage);
+            exit(0);
+        } else if (type == "encode") {
+            randomer.randomSeed = args.find("seed") != args.end()
+                                  ? std::strtoll(args.at("seed").c_str(), nullptr, 10)
+                                  : 31415926;
+
+            randomer.blockWidth = args.find("w") != args.end()
+                                  ? std::strtoll(args.at("w").c_str(), nullptr, 10)
+                                  : 1;
+
+            randomer.blockHeight = args.find("h") != args.end()
+                                   ? std::strtoll(args.at("h").c_str(), nullptr, 10)
+                                   : 1;
+            outputImage = encode(inputImage, randomer);
+        } else if (type == "decode") {
+            randomer.randomSeed = args.find("seed") != args.end()
+                                  ? std::strtoll(args.at("seed").c_str(), nullptr, 10)
+                                  : 31415926;
+
+            randomer.blockWidth = args.find("w") != args.end()
+                                  ? std::strtoll(args.at("w").c_str(), nullptr, 10)
+                                  : 1;
+
+            randomer.blockHeight = args.find("h") != args.end()
+                                   ? std::strtoll(args.at("h").c_str(), nullptr, 10)
+                                   : 1;
+            outputImage = decode(inputImage, randomer);
+        } else {
+            throw std::runtime_error("bad type provided");
+        }
+
+        // specify the default output filename
+        if (args.find("o") == args.end()) args["o"] = "output.png";
+        imwrite(args.at("o"), outputImage);
+    } catch (std::out_of_range &out_of_range) {
+        fmt::println("key value not found, please check help\n{}", out_of_range.what());
+    } catch (std::exception &exception) {
+        fmt::println("{}", exception.what());
+    }
 }
