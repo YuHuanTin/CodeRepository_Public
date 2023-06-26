@@ -5,24 +5,17 @@
 #include <iostream>
 #include <Windows.h>
 #include <set>
-#include <stdint.h>
 #include <string>
 
 struct warpCvVec4b : public cv::Vec4b {
     using cv::Vec4b::Vec;
-    /**
-     *  这个重载有可能有问题
-     */
-    bool operator<(const warpCvVec4b &R) const {
-        if (this->val[0] < R.val[0]) return false;
-        if (this->val[1] < R.val[1]) return false;
-        if (this->val[2] < R.val[2]) return false;
-        return true;
-    }
 
-//    friend  warpCvVec4b operator()(const warpCvVec4b &l, const warpCvVec4b &r) {
-//        return l;
-//    }
+    bool operator<(const warpCvVec4b &R) const {
+        if (this->val[0] != R.val[0]) return this->val[0] < R.val[0];
+        if (this->val[1] != R.val[1]) return this->val[1] < R.val[1];
+        if (this->val[2] != R.val[2]) return this->val[2] < R.val[2];
+        return false;
+    }
 };
 
 
@@ -52,11 +45,12 @@ int main() {
     try {
         double dpi = getDPI();
 
-//        writeConfig();
+        writeConfig();
         std::set<warpCvVec4b> findColors = readConfig();
 
         HWND cvWindowHWND = createShowWindow(dpi);
         HWND terrariaWindowHWND = findWindow();
+
         while (true) {
             if (GetForegroundWindow() == terrariaWindowHWND) {
                 SetLayeredWindowAttributes(cvWindowHWND, RGB(0, 0, 0), 255, LWA_ALPHA | LWA_COLORKEY);
@@ -66,7 +60,7 @@ int main() {
                 cv::waitKey(20);
             } else {
                 SetLayeredWindowAttributes(cvWindowHWND, RGB(0, 0, 0), 0, LWA_ALPHA | LWA_COLORKEY);
-                cv::waitKey(5000);
+                cv::waitKey(500);
             }
         }
     } catch (std::runtime_error &error) {
@@ -84,9 +78,11 @@ void writeConfig() {
         uint8_t b;
         uint8_t alpha;
     };
-    std::vector<findPixel> insertJsonDatas {
-            {u8"精金矿",   52, 26,  128, 0xff},
-            {u8"金色宝箱", 94, 207, 233, 0xff}
+    std::vector<findPixel> insertJsonDatas{
+//            {u8"精金矿",   128,  26,  52, 0xff},
+//            {u8"宝箱", 233, 207, 94, 0xff},
+//            {u8"世纪之花", 225, 128, 206, 0xff},
+            {u8"生命果", 149, 232, 87, 0xff}
     };
     nlohmann::json nJson;
     for (int i = 0; i < insertJsonDatas.size(); ++i) {
@@ -114,13 +110,14 @@ std::set<warpCvVec4b> readConfig() {
     fstream.read(tmp.data(), fileSize);
 
     nlohmann::json nJson(nlohmann::json::parse(tmp));
+
     for (const auto &item: nJson) {
         for (const auto &element: item.items()) {
             std::cout << "Name: " << element.key() << std::endl;
             const auto &color = element.value();
 
-            warpCvVec4b p2(color["r"], color["g"], color["b"], color["alpha"]);
-            jsonElements.insert(p2);
+            warpCvVec4b p2(color["b"], color["g"], color["r"], color["alpha"]);
+            if (!jsonElements.insert(p2).second) throw std::runtime_error("failed insert to set");
         }
     }
     if (jsonElements.empty()) throw std::runtime_error("json element is empty");
@@ -150,7 +147,7 @@ cv::Mat dataFilter(cv::Mat &MatData, double DPI, std::set<warpCvVec4b> &RequestC
         POINT curPoint;
         GetCursorPos(&curPoint);
         cv::line(MatData, targetPixel, cv::Point(curPoint.x * DPI, curPoint.y * DPI - 22),
-                 cv::Scalar(0, 0, 255), 2);
+                 cv::Scalar(0, 0, 255), 1);
     }
     return MatData;
 }
@@ -219,7 +216,7 @@ HWND createShowWindow(double DPI) {
     SetWindowLongPtr(cvWindowHWND, GWL_STYLE, Style);
 
     // 至顶层窗口 最大化
-//    SetWindowPos(cvWindowHWND, HWND_TOPMOST, 0, 22, iWidth, iHeight, SWP_SHOWWINDOW);
+    SetWindowPos(cvWindowHWND, HWND_TOPMOST, 0, 22, iWidth, iHeight, SWP_SHOWWINDOW);
 
     // 设置窗口透明
     SetWindowLong(cvWindowHWND, GWL_EXSTYLE, WS_EX_LAYERED);

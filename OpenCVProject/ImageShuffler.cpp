@@ -92,23 +92,23 @@ cv::Mat decode(cv::Mat &Image, const Randomer &RandomerParam) {
 }
 
 /**
- *  // 展示图片信息 输出可选的分块大小
+ *  // 展示图片信息 输出可选的分块大小\n
  *  ImageShuffle.exe -type info -i input.png
- *
- *  // 对图像进行打乱
+ *  \n\n
+ *  // 对图像进行打乱\n
  *  ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type encode
- *
- *  // 对图片进行还原
+ *  \n\n
+ *  // 对图片进行还原\n
  *  ImageShuffle.exe -i input.png -o output.png -w 1 -h 1 -seed 123456 -type decode
- *
- *  -type           indicate what to do
- *  -i              inputImage
- *  -o              outputImage         optional (output.png)
- *  -w              blockWidth          optional (1)
- *  -h              blockHeight         optional (1)
- *  -seed           randomSeed          optional (31415926)
- *
- *  Warning, please do not convert to jpg, the color may change, it is recommended to convert to png format
+ *  \n\n
+ *  -type           indicate what to do\n
+ *  -i              inputImage\n
+ *  -o              outputImage         optional (output.png)\n
+ *  -w              blockWidth          optional (1)\n
+ *  -h              blockHeight         optional (1)\n
+ *  -seed           randomSeed          optional (31415926)\n
+ *  \n
+ *  Warning, please do not convert to jpg, the color may change, it is recommended to convert to png format\n
  */
 
 int main(int argc, char *argv[]) {

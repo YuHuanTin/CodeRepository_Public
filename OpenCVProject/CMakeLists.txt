@@ -8,7 +8,7 @@ find_package(fmt CONFIG REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 
 
-add_executable(OpenCVProject ImageShuffler.cpp)
+add_executable(OpenCVProject TerrariaBlockFinder.cpp)
 
 
 target_link_libraries(OpenCVProject fmt::fmt)
