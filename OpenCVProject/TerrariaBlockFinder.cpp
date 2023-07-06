@@ -45,7 +45,7 @@ int main() {
     try {
         double dpi = getDPI();
 
-        writeConfig();
+//        writeConfig();
         std::set<warpCvVec4b> findColors = readConfig();
 
         HWND cvWindowHWND = createShowWindow(dpi);
