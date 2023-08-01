@@ -1,23 +1,47 @@
+#include "fmt/core.h"
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <filesystem>
 #include <opencv2/opencv.hpp>
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <ios>
 #include <iostream>
 #include <Windows.h>
-#include <set>
+#include <unordered_set>
 #include <string>
 
 struct warpCvVec4b : public cv::Vec4b {
     using cv::Vec4b::Vec;
+
+    /*  use std::set overload operator < for 'comp'
 
     bool operator<(const warpCvVec4b &R) const {
         if (this->val[0] != R.val[0]) return this->val[0] < R.val[0];
         if (this->val[1] != R.val[1]) return this->val[1] < R.val[1];
         if (this->val[2] != R.val[2]) return this->val[2] < R.val[2];
         return false;
+    }*/
+
+    bool operator==(const warpCvVec4b &R) const {
+        return this->val[0] == R.val[0] &&
+               this->val[1] == R.val[1] &&
+               this->val[2] == R.val[2] &&
+               this->val[3] == R.val[3];
     }
 };
 
+struct warpCvVec4bHasher {
+    size_t operator()(const warpCvVec4b &Value) const {
+        return (Value.val[0] << 0 * 8) +
+               (Value.val[1] << 1 * 8) +
+               (Value.val[2] << 2 * 8) +
+               (Value.val[3] << 3 * 8);
+    }
+};
+
+using warpCvVec4bSet = std::unordered_set<warpCvVec4b, warpCvVec4bHasher>;
 
 // 获取系统DPI缩放值
 extern double getDPI();
@@ -31,24 +55,28 @@ extern HWND findWindow();
 // 对窗口区域进行截图
 extern cv::Mat getWindowCaptureData(HWND, HWND, double);
 
-// 处理遮罩
-extern cv::Mat dataFilter(cv::Mat &, double, std::set<warpCvVec4b> &);
+// 数据过滤
+extern cv::Mat dataFilter(cv::Mat &, double, warpCvVec4bSet &);
 
-extern std::set<warpCvVec4b> readConfig();
+// 读配置
+extern warpCvVec4bSet readConfig();
 
+// 写配置
 extern void writeConfig();
 
 const std::string windowTitle = "TerrariaCVColorBlock";
 
 int main() {
-    std::cout << std::unitbuf;
+    setbuf(stdout, nullptr);
+    std::system("chcp 65001");
+
     try {
         double dpi = getDPI();
 
-//        writeConfig();
-        std::set<warpCvVec4b> findColors = readConfig();
+        writeConfig();
+        warpCvVec4bSet findColors = readConfig();
 
-        HWND cvWindowHWND = createShowWindow(dpi);
+        HWND cvWindowHWND       = createShowWindow(dpi);
         HWND terrariaWindowHWND = findWindow();
 
         while (true) {
@@ -63,8 +91,8 @@ int main() {
                 cv::waitKey(500);
             }
         }
-    } catch (std::runtime_error &error) {
-        std::cout << "error: " << error.what() << '\n';
+    } catch (std::exception &exception) {
+        fmt::println("[ERROR] {}", exception.what());
     }
     cv::waitKey(0);
     cv::destroyAllWindows();
@@ -73,35 +101,36 @@ int main() {
 void writeConfig() {
     struct findPixel {
         std::string name; // require unique
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-        uint8_t alpha;
+        uint8_t     r;
+        uint8_t     g;
+        uint8_t     b;
+        uint8_t     alpha;
     };
     std::vector<findPixel> insertJsonDatas{
 //            {u8"精金矿",   128,  26,  52, 0xff},
-//            {u8"宝箱", 233, 207, 94, 0xff},
+            {u8"加锁沙漠箱", 230, 170, 100, 0xff},
+            {u8"宝箱",       233, 207, 94,  0xff},
 //            {u8"世纪之花", 225, 128, 206, 0xff},
-            {u8"生命果", 149, 232, 87, 0xff}
+//            {u8"生命果", 149, 232, 87, 0xff}
     };
+
     nlohmann::json nJson;
-    for (int i = 0; i < insertJsonDatas.size(); ++i) {
-        nJson[i][insertJsonDatas[i].name]["r"] = insertJsonDatas[i].r;
-        nJson[i][insertJsonDatas[i].name]["g"] = insertJsonDatas[i].g;
-        nJson[i][insertJsonDatas[i].name]["b"] = insertJsonDatas[i].b;
+
+    for (int     i   = 0; i < insertJsonDatas.size(); ++i) {
+        nJson[i][insertJsonDatas[i].name]["r"]     = insertJsonDatas[i].r;
+        nJson[i][insertJsonDatas[i].name]["g"]     = insertJsonDatas[i].g;
+        nJson[i][insertJsonDatas[i].name]["b"]     = insertJsonDatas[i].b;
         nJson[i][insertJsonDatas[i].name]["alpha"] = insertJsonDatas[i].alpha;
     }
-
     std::fstream fstream("config.json", std::ios_base::out | std::ios_base::binary);
-    std::string tmp = nJson.dump(4);
+    std::string  tmp = nJson.dump(4);
     fstream.write(tmp.data(), tmp.length());
     fstream.close();
 }
 
-std::set<warpCvVec4b> readConfig() {
-    std::set<warpCvVec4b> jsonElements;
-
-    std::fstream fstream("config.json");
+warpCvVec4bSet readConfig() {
+    warpCvVec4bSet jsonElements;
+    std::fstream   fstream("config.json");
     if (!fstream) throw std::runtime_error("can't find config.json at current directory");
     fstream.seekg(0, std::ios_base::end);
     size_t fileSize = fstream.tellg();
@@ -113,7 +142,8 @@ std::set<warpCvVec4b> readConfig() {
 
     for (const auto &item: nJson) {
         for (const auto &element: item.items()) {
-            std::cout << "Name: " << element.key() << std::endl;
+//            std::cout << "Name: " << element.key() << std::endl;
+            fmt::println("Name: {}", element.key());
             const auto &color = element.value();
 
             warpCvVec4b p2(color["b"], color["g"], color["r"], color["alpha"]);
@@ -124,16 +154,17 @@ std::set<warpCvVec4b> readConfig() {
     return jsonElements;
 }
 
-cv::Mat dataFilter(cv::Mat &MatData, double DPI, std::set<warpCvVec4b> &RequestColors) {
+cv::Mat dataFilter(cv::Mat &MatData, double DPI, warpCvVec4bSet &RequestColors) {
     auto &h = MatData.rows;
     auto &w = MatData.cols;
 
     std::vector<cv::Point> targetPixels;
-    for (int y = 0; y < h; ++y) {
+
+    for (int  y = 0; y < h; ++y) {
         for (int x = 0; x < w; ++x) {
             auto &color = MatData.at<cv::Vec4b>(y, x);
-            auto &tr = (warpCvVec4b &) color;
-            if (RequestColors.count(tr) == 1) {
+            auto &tr    = (warpCvVec4b &) color;
+            if (RequestColors.count(tr)) {
                 targetPixels.emplace_back(x, y);
                 continue;
             }
@@ -153,26 +184,27 @@ cv::Mat dataFilter(cv::Mat &MatData, double DPI, std::set<warpCvVec4b> &RequestC
 }
 
 cv::Mat getWindowCaptureData(HWND CvWindowHWND, HWND CaptureWindowHWND, double DPI) {
+
     RECT cvWindowRect;
     GetClientRect(CvWindowHWND, &cvWindowRect);
     int cvWindowHeight = (cvWindowRect.bottom - cvWindowRect.top) * DPI;
-    int cvWindowWidth = (cvWindowRect.right - cvWindowRect.left) * DPI;
+    int cvWindowWidth  = (cvWindowRect.right - cvWindowRect.left) * DPI;
 
     RECT captureWindowRect;
     GetClientRect(CaptureWindowHWND, &captureWindowRect);
     int captureWindowHeight = (captureWindowRect.bottom - captureWindowRect.top) * DPI;
-    int captureWindowWidth = (captureWindowRect.right - captureWindowRect.left) * DPI;
+    int captureWindowWidth  = (captureWindowRect.right - captureWindowRect.left) * DPI;
 
     // 截图
-    HDC captureDC = GetDC(CaptureWindowHWND);
-    HDC memDC = CreateCompatibleDC(captureDC);
-    HBITMAP hBitmap = CreateCompatibleBitmap(captureDC, cvWindowWidth, cvWindowHeight);
-    auto oldbmp = SelectObject(memDC, hBitmap);
+    HDC     captureDC = GetDC(CaptureWindowHWND);
+    HDC     memDC     = CreateCompatibleDC(captureDC);
+    HBITMAP hBitmap   = CreateCompatibleBitmap(captureDC, cvWindowWidth, cvWindowHeight);
+    auto    oldbmp    = SelectObject(memDC, hBitmap);
 
     BitBlt(memDC, 0, 0, captureWindowWidth, captureWindowHeight, captureDC, 0, 0, SRCCOPY);
 
     // 拷贝数据到cv::Mat
-    cv::Mat mat(cvWindowHeight, cvWindowWidth, CV_8UC4);
+    cv::Mat          mat(cvWindowHeight, cvWindowWidth, CV_8UC4);
     BITMAPINFOHEADER bi = {sizeof(bi), cvWindowWidth, -cvWindowHeight, 1, 32, BI_RGB};
     GetDIBits(captureDC, hBitmap, 0, cvWindowHeight, mat.data, (BITMAPINFO *) &bi, DIB_RGB_COLORS);
 
@@ -207,7 +239,7 @@ HWND createShowWindow(double DPI) {
     if (cvWindowHWND == nullptr) throw std::runtime_error("can't find window");
 
 
-    int iWidth = GetSystemMetrics(SM_CXSCREEN) * DPI;
+    int iWidth  = GetSystemMetrics(SM_CXSCREEN) * DPI;
     int iHeight = GetSystemMetrics(SM_CYSCREEN) * DPI;
 
     // 去掉标题栏及边框
@@ -228,9 +260,9 @@ HWND createShowWindow(double DPI) {
 }
 
 double getDPI() {
-    HWND desktopHWND = GetDesktopWindow();
-    int zoom = GetDpiForWindow(desktopHWND);
-    double dpi = 0;
+    HWND        desktopHWND = GetDesktopWindow();
+    std::size_t zoom        = GetDpiForWindow(desktopHWND);
+    double      dpi         = 0;
     switch (zoom) {
         case 96:
             dpi = 1;
@@ -246,7 +278,6 @@ double getDPI() {
             break;
         default:
             throw std::runtime_error("bad DPI");
-            break;
     }
     return dpi;
 }
