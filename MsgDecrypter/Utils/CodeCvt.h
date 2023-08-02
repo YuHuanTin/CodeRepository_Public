@@ -1,9 +1,10 @@
 #ifndef DYNAMICWALLPAPER_CODECVT_H
 #define DYNAMICWALLPAPER_CODECVT_H
 
+#include <stdexcept>
 #include <memory>
 #include <string>
-#include <windows.h>
+#include <Windows.h>
 
 namespace CodeCvt {
     using std::string;
