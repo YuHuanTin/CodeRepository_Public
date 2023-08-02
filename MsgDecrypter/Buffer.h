@@ -1,4 +1,8 @@
+#ifndef LIBSUPERCPP4WIN_BUFFER_H
+#define LIBSUPERCPP4WIN_BUFFER_H
 
+
+#include <cstddef>
 
 // 实现只读 Buffer
 template<typename T>
@@ -33,10 +37,6 @@ public:
     template<std::size_t GetBytes>
     void read(T *Ptr) {
         read(Ptr, GetBytes);
-//        for (std::size_t i = 0; i < GetBytes; ++i) {
-//            *(Ptr + i) = *(m_buffer + m_currentPostion + i);
-//        }
-//        m_currentPostion += GetBytes;
     }
 
     void read(T *Ptr, std::size_t Count) {
@@ -62,3 +62,5 @@ private:
     std::size_t m_currentPostion = 0;
     std::size_t m_maxPostion     = 0;
 };
+
+#endif //LIBSUPERCPP4WIN_BUFFER_H
