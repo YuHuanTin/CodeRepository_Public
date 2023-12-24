@@ -1,0 +1,17 @@
+// 执行 pushad
+StepOver
+// 设置硬件断点
+bph esp,r,4
+// 运行
+run
+// 删除所有硬件断点
+bphc
+// 找到最近的 jmp xxxx? ，结果存储在 $result 变量中
+find cip,"E9"
+// 设置断点在 jmp，并且运行
+bp $result
+run
+// 删除当前位置的 断点
+bpc cip
+// 跳转到 oep
+StepOver
