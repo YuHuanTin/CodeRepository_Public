@@ -1,6 +1,9 @@
+#include <windows.h>
+#include <iostream>
+
 void cpuSetting(bool DisableC1E = true) {
-    
-    // æ³¨æ„: è¯·å…ˆæ‰‹åŠ¨æ³¨å†Œ ThrottleStop é©±åŠ¨,è¿™é‡Œæ¨èä½¿ç”¨ ProcessHack (githubæœ‰) 'åˆ›å»ºæœåŠ¡',ç±»å‹ä¸º'é©±åŠ¨',å¯åŠ¨ç±»å‹ä¸º'éœ€æ±‚å¯åŠ¨'
+
+    // ×¢Òâ: ÇëÏÈÊÖ¶¯×¢²á ThrottleStop Çı¶¯,ÕâÀïÍÆ¼öÊ¹ÓÃ ProcessHack (githubÓĞ) '´´½¨·şÎñ',ÀàĞÍÎª'Çı¶¯',Æô¶¯ÀàĞÍÎª'ĞèÇóÆô¶¯'
     system("sc start ThrottleStop");
 
     HANDLE hDevice = CreateFile(R"(\\.\ThrottleStop)", GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
@@ -40,11 +43,10 @@ void cpuSetting(bool DisableC1E = true) {
 
     system("sc stop ThrottleStop");
 }
+
 int main(int argc, const char *argv[]) {
-    if (strcmp(argv[i], "openTurbo") == 0 || strcmp(argv[i], "enableC1E") == 0) {
-            cpuSetting(true);
-    } else if (strcmp(argv[i], "disableC1E") == 0) {
-            cpuSetting(false);
-    }
+
+    cpuSetting(true);
+    
     return 0;
 }

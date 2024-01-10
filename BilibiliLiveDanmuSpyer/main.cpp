@@ -1,14 +1,18 @@
 #include <iostream>
 #include <thread>
+#include <memory>
+#include <string>
+#include <WinSock2.h>
+#include <windows.h>
+#include <sstream>
+#include <array>
+
+
+#include <cpr/cpr.h>
+#include <nlohmann/json.hpp>
 #include <brotli/decode.h>
 #include <ixwebsocket/IXNetSystem.h>
 #include <ixwebsocket/IXWebSocket.h>
-#include <WinhttpAPI.h>
-#include "json.hpp"
-#include <memory>
-#include <string>
-#include <windows.h>
-#include <sstream>
 
 using std::string;
 using std::wstring;
@@ -92,11 +96,12 @@ string decompress(const string &Data) {
 }
 
 string requestURL(const string &Url) {
-    HttpRequestT httpRequest {Url, "get"};
-    HttpResponseT httpResponse;
-    WinhttpAPI api(httpRequest, httpResponse);
-    api.Request();
-    return httpResponse.Body;
+    auto response     = cpr::GetAsync(cpr::Url(Url));
+    auto httpResponse = response.get();
+    if (httpResponse.status_code != 200) {
+        throw runtime_error(httpResponse.text);
+    }
+    return httpResponse.text;
 }
 
 void showDanmu(std::vector<nlohmann::json> &vJson) {
@@ -106,17 +111,17 @@ void showDanmu(std::vector<nlohmann::json> &vJson) {
         if (vJson[i].contains("/cmd"_json_pointer)) {
             if (vJson[i].at("/cmd"_json_pointer) == "DANMU_MSG") {
                 std::stringstream ss;
-                string guardType[] = {{u8"è§‚ä¼—"},
-                                      {u8"æ€»ç£"},
-                                      {u8"æç£"},
-                                      {u8"èˆ°é•¿"}};
+                string guardType[] = {{u8"¹ÛÖÚ"},
+                                      {u8"×Ü¶½"},
+                                      {u8"Ìá¶½"},
+                                      {u8"½¢³¤"}};
 
                 string msg = vJson[i].at("/info/1"_json_pointer).is_null() ? "" : vJson[i].at("/info/1"_json_pointer);
                 string userName = vJson[i].at("/info/2/1"_json_pointer);
                 int64_t userID = vJson[i].at("/info/2/0"_json_pointer);
 
-                string fansMedalLabel = u8"æœªä½©æˆ´ç‰Œå­";
-                string fansMedalAnchorUsername = u8"æœªä½©æˆ´ç‰Œå­";
+                string fansMedalLabel = u8"Î´Åå´÷ÅÆ×Ó";
+                string fansMedalAnchorUsername = u8"Î´Åå´÷ÅÆ×Ó";
                 uint32_t fansMedalLevel = 0;
                 uint32_t guardTypeIndex = 0;
                 uint64_t fansMedalAnchorId = 0;
@@ -141,14 +146,14 @@ void showDanmu(std::vector<nlohmann::json> &vJson) {
                 }
             }
         } else if (vJson[i].contains("/popularValue"_json_pointer)) {
-            std::cout << "äººæ°”å€¼: " << vJson[i]["popularValue"] << '\n';
+            std::cout << "ÈËÆøÖµ: " << vJson[i]["popularValue"] << '\n';
         } else if (vJson[i].contains("/code"_json_pointer)) {
             if (vJson[i]["code"] == WS_AUTH_OK)
-                std::cout << "è¿æ¥æˆåŠŸ\n";
+                std::cout << "Á¬½Ó³É¹¦\n";
             else if (vJson[i]["code"] == WS_AUTH_TOKEN_ERROR)
-                throw runtime_error("Tokené”™è¯¯");
-            else throw runtime_error("æœªçŸ¥é”™è¯¯");
-        } else throw runtime_error("æœªçŸ¥åˆ†æ”¯");
+                throw runtime_error("Token´íÎó");
+            else throw runtime_error("Î´Öª´íÎó");
+        } else throw runtime_error("Î´Öª·ÖÖ§");
 
     }
 
@@ -157,7 +162,7 @@ void showDanmu(std::vector<nlohmann::json> &vJson) {
 class Protocol {
 private:
     struct PackageHeaderT {
-        uint32_t totalSize = 0; // åŒ…æ‹¬Headerçš„é•¿åº¦
+        uint32_t totalSize = 0; // °üÀ¨HeaderµÄ³¤¶È
 
         uint16_t headerLen = 0;
         uint16_t protocolVersion = 0;
@@ -190,7 +195,7 @@ public:
                 vJson.push_back(nlohmann::json::parse(string {Buf.c_str() + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
                                                               packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH}));
             } else if (packageHeader.operation == WS_OP_HEARTBEAT_REPLY) {
-                // å¿ƒè·³åŒ…è¿”å›äººæ°”å€¼
+                // ĞÄÌø°ü·µ»ØÈËÆøÖµ
                 uint32_t popularValue = *(uint32_t *) (Buf.c_str() + WS_PACKAGE_HEADER_TOTAL_LENGTH);
                 return {{{"popularValue", ntohl(popularValue)}}};
             } else if (packageHeader.operation == WS_OP_MESSAGE) {
@@ -221,7 +226,7 @@ public:
                 nJson = nlohmann::json::parse(string {Buf.c_str() + WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH,
                                                       packageHeader.totalSize - WS_MsgType_E::WS_PACKAGE_HEADER_TOTAL_LENGTH});
             } else if (packageHeader.operation == WS_OP_HEARTBEAT_REPLY) {
-                // å¿ƒè·³åŒ…è¿”å›äººæ°”å€¼
+                // ĞÄÌø°ü·µ»ØÈËÆøÖµ
                 uint32_t popularValue = *(uint32_t *) (Buf.c_str() + WS_PACKAGE_HEADER_TOTAL_LENGTH);
                 return {{"popularValue", ntohl(popularValue)}};
             } else if (packageHeader.operation == WS_OP_MESSAGE) {
@@ -277,24 +282,24 @@ int main() {
     nlohmann::json nJson;
     InputT input;
     try {
-        // è·å–ä¿¡æ¯
+        // »ñÈ¡ĞÅÏ¢
         {
-            std::cout << "è¯·è¾“å…¥ä½ çš„UID:\n";
+            std::cout << "ÇëÊäÈëÄãµÄUID:\n";
             std::cin >> input.UID;
-            std::cout << "è¯·è¾“å…¥æˆ¿é—´å·:\n";
+            std::cout << "ÇëÊäÈë·¿¼äºÅ:\n";
             std::cin >> input.roomID;
-            std::cout << "æ˜¯å¦ä¿å­˜å¼¹å¹•æ–‡ä»¶(ä¸è¾“å‡ºä¸€è‡´ 1/0):\n";
+            std::cout << "ÊÇ·ñ±£´æµ¯Ä»ÎÄ¼ş(ÓëÊä³öÒ»ÖÂ 1/0):\n";
             std::cin >> gEnv.saveFile;
             if (gEnv.saveFile) {
                 fopen_s(&gEnv.fp, "danmu.txt", "a+");
                 if (gEnv.fp == nullptr) throw runtime_error("failed open file");
             }
-            std::cout << "æ˜¯å¦è°ƒè¯•æ¨¡å¼(1/0):\n";
+            std::cout << "ÊÇ·ñµ÷ÊÔÄ£Ê½(1/0):\n";
             std::cin >> gEnv.debug;
             if (gEnv.debug) std::cout << "debug on\n";
         }
 
-        // è·å–çœŸå®æˆ¿é—´å·
+        // »ñÈ¡ÕæÊµ·¿¼äºÅ
         {
             string responseBody = requestURL("https://api.live.bilibili.com/room/v1/Room/room_init?id=" + std::to_string(input.roomID));
             nJson = nlohmann::json::parse(responseBody);
@@ -302,10 +307,10 @@ int main() {
             input.liveUpUID = nJson["data"]["uid"];
 
             if (gEnv.debug)
-                std::cout << "æˆ¿é—´çœŸå®idå·: " << input.realRoomID << "\nå¼€æ’­up uid: " << input.liveUpUID << '\n';
+                std::cout << "·¿¼äÕæÊµidºÅ: " << input.realRoomID << "\n¿ª²¥up uid: " << input.liveUpUID << '\n';
         }
 
-        // éšæœºé€‰å–ä¸€ä¸ªå¼¹å¹•æœåŠ¡å™¨
+        // Ëæ»úÑ¡È¡Ò»¸öµ¯Ä»·şÎñÆ÷
         {
             nJson = nlohmann::json::parse(
                     requestURL("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id=" + std::to_string(input.realRoomID) + "&type=0"));
@@ -315,7 +320,7 @@ int main() {
             input.danmuServerToken = nJson["data"]["token"];
 
             if (gEnv.debug)
-                std::cout << "é€‰å–å¼¹å¹•æœåŠ¡å™¨: " << input.danmuServerHost << ":" << input.danmuServerPort << '\n';
+                std::cout << "Ñ¡È¡µ¯Ä»·şÎñÆ÷: " << input.danmuServerHost << ":" << input.danmuServerPort << '\n';
         }
 
         // websocket part

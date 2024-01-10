@@ -1,10 +1,16 @@
-// request c++ 23 standard & boost::thread
+
+/**
+ * Note: There are thread conflicts!!
+ * request c++ 23 standard & boost::thread
+ * 
+ * Important: This is an example of a thread group and not an implementation of a thread pool
+ */
+
 
 #include <vector>
 #include <chrono>
+#include <iostream>
 #include <boost/thread.hpp>
-#include "boost/thread/detail/thread.hpp"
-#include "boost/thread/detail/thread_group.hpp"
 
 using namespace std;
 
@@ -18,7 +24,7 @@ string getRandomStr(size_t StrLen) {
     return randomStr;
 }
 
-// 鍙栧嚭鏉′欢
+// 取出条件
 bool selectCondition(const string &Str) {
     if (Str.contains("aac")) return true;
     return false;
@@ -26,7 +32,7 @@ bool selectCondition(const string &Str) {
 int main() {
     cout << unitbuf;
     boost::thread_group threadGroup;
-    // 鍔犲叆闅忔満鏁版嵁
+    // 加入随机数据
     auto begin = chrono::system_clock::now();
     const size_t containSize = 5000000;
     const size_t threadNum = 20;
@@ -42,7 +48,7 @@ int main() {
     threadGroup.join_all();
     cout << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << '\n';
     begin = chrono::system_clock::now();
-    // 妯℃嫙 select
+    // 模拟 select
     vector<string_view> selectStr;
     for (int i = 0; i < threadNum; ++i) {
         threadGroup.create_thread([&,i]() {
@@ -56,7 +62,7 @@ int main() {
     }
     threadGroup.join_all();
     cout << chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - begin).count() << '\n';
-    // 杈撳嚭缁撴灉
+    // 输出结果
     for (auto i : selectStr) {
         cout << i << '\n';
     }

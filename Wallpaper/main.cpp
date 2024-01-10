@@ -6,15 +6,15 @@
 double gIconAttributes = 100;
 
 BOOL cb(HWND hwnd, LPARAM lparam) {
-    // ä»¥æ¡Œé¢çª—å£ä¸‹çš„çª—å£ä½œä¸ºçˆ¶çª—å£(ä¸ProgmanåŒçº§)å¯»æ‰¾SHELLDLL_DefViewä¸ºç±»åçš„çª—å£
+    // ÒÔ×ÀÃæ´°¿ÚÏÂµÄ´°¿Ú×÷Îª¸¸´°¿Ú(ÓëProgmanÍ¬¼¶)Ñ°ÕÒSHELLDLL_DefViewÎªÀàÃûµÄ´°¿Ú
     HWND hDefView = FindWindowEx(hwnd, nullptr, "SHELLDLL_DefView", nullptr);
 
-    // å¦‚æœhDefViewä¸ä¸ºnullptråˆ™è¯´æ˜è¯¥WorkerWçª—å£ä¸‹æœ‰SHELLDLL_DefViewçª—å£
+    // Èç¹ûhDefView²»ÎªnullptrÔòËµÃ÷¸ÃWorkerW´°¿ÚÏÂÓĞSHELLDLL_DefView´°¿Ú
     if (hDefView != nullptr) {
-        // æ‰¾å®ƒçš„ä¸‹ä¸€ä¸ªçª—å£,ä¸ºæ²¡æœ‰SHELLDLL_DefViewçš„WorkerWçª—å£
+        // ÕÒËüµÄÏÂÒ»¸ö´°¿Ú,ÎªÃ»ÓĞSHELLDLL_DefViewµÄWorkerW´°¿Ú
         HWND hWorkerw = FindWindowEx(nullptr, hwnd, "WorkerW", nullptr);
 
-        // è®¾ç½®æ¡Œé¢å›¾æ ‡é€æ˜åº¦
+        // ÉèÖÃ×ÀÃæÍ¼±êÍ¸Ã÷¶È
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW);
         SetLayeredWindowAttributes(hwnd, 0, (int)(gIconAttributes / 100 * 255), LWA_ALPHA);
         //UpdateLayeredWindow(hwnd, nullptr, nullptr, nullptr, nullptr, nullptr, 0, nullptr, 0);
@@ -27,24 +27,24 @@ BOOL cb(HWND hwnd, LPARAM lparam) {
 }
 
 void setWallpaper(const std::string &playerClassName) {
-    // æ‰¾åˆ°explorerçš„æ¡Œé¢çª—å£
+    // ÕÒµ½explorerµÄ×ÀÃæ´°¿Ú
     HWND hProgman = FindWindow("Progman", nullptr);
 
-    // å‘æ¡Œé¢çª—å£å‘é€æ¶ˆæ¯
-    // ä¼šæŠŠProgmanåˆ†è£‚å‡ºä¸¤ä¸ªWorkerWç±»åçš„çª—å£,ä¸€ä¸ªæ”¾çš„æ˜¯å£çº¸ä¸€ä¸ªæ”¾çš„æ˜¯å›¾æ ‡ç­‰
+    // Ïò×ÀÃæ´°¿Ú·¢ËÍÏûÏ¢
+    // »á°ÑProgman·ÖÁÑ³öÁ½¸öWorkerWÀàÃûµÄ´°¿Ú,Ò»¸ö·ÅµÄÊÇ±ÚÖ½Ò»¸ö·ÅµÄÊÇÍ¼±êµÈ
     SendMessageTimeout(hProgman, 0x52C, 0, 0, 0, 10000, nullptr);
 
-    // æ‰¾åˆ°åˆ†è£‚å‡ºæ¥çš„ç¬¬äºŒä¸ªWorkerWçš„çª—å£å¥æŸ„
+    // ÕÒµ½·ÖÁÑ³öÀ´µÄµÚ¶ş¸öWorkerWµÄ´°¿Ú¾ä±ú
     HWND hSecondWorker = nullptr;
     EnumWindows(cb, (LPARAM) &hSecondWorker);
-    // æ‰¾åˆ°è‡ªå·±æ’­æ”¾è§†é¢‘çš„çª—å£
+    // ÕÒµ½×Ô¼º²¥·ÅÊÓÆµµÄ´°¿Ú
     HWND hFfplay = FindWindow(playerClassName.c_str(), nullptr);
 
-    // è®¾ç½®æ’­æ”¾è§†é¢‘çš„çª—å£è®¾ç½®ä¸ºProgmançš„å­çª—å£
+    // ÉèÖÃ²¥·ÅÊÓÆµµÄ´°¿ÚÉèÖÃÎªProgmanµÄ×Ó´°¿Ú
     SetParent(hFfplay, hSecondWorker);
 
 
-    // é˜²æ­¢è½¬åˆ°çª—å£ä½†æ˜¯æ¶ˆå¤±äº†
+    // ·ÀÖ¹×ªµ½´°¿Úµ«ÊÇÏûÊ§ÁË
     SetWindowLongPtr(hFfplay, GWL_EXSTYLE, WS_EX_NOACTIVATE);
     SetWindowLongPtr(hFfplay, GWL_STYLE, WS_CHILD | WS_VISIBLE);
 }
@@ -59,26 +59,26 @@ int main(int argc, char *argv[]) {
 
     std::string s;
 
-    std::cout << "æ˜¯å¦éœ€è¦æ›´æ”¹å›¾æ ‡é€æ˜åº¦(å¦‚æœéœ€è¦æ›´æ”¹è¯·è¾“å…¥0-100çš„å€¼):";
+    std::cout << "ÊÇ·ñĞèÒª¸ü¸ÄÍ¼±êÍ¸Ã÷¶È(Èç¹ûĞèÒª¸ü¸ÄÇëÊäÈë0-100µÄÖµ):";
     std::cin >> s;
     long value = strtol(s.c_str(), nullptr, 10);
     if (0 <= value && value <= 100) {
         gIconAttributes = value;
-        std::cout << "é€æ˜åº¦å·²è®¾ç½®ä¸º: " << gIconAttributes << '\n';
+        std::cout << "Í¸Ã÷¶ÈÒÑÉèÖÃÎª: " << gIconAttributes << '\n';
     }
 
-    std::cout << "è¯·è¾“å…¥å£çº¸çš„è·¯å¾„:";
+    std::cout << "ÇëÊäÈë±ÚÖ½µÄÂ·¾¶:";
     std::cin >> s;
     std::string lpParameter =
             " " + s + " -noborder -x " + std::to_string(width) + " -y " + std::to_string(height) + " -loop 0";
 
-    std::cout << "è¯·è¾“å…¥ffplayè·¯å¾„:";
+    std::cout << "ÇëÊäÈëffplayÂ·¾¶:";
     std::cin >> s;
     if (s.front() == '"' && s.back() == '"') {
         s = s.substr(1, s.length() - 2);
     }
 
-    // å¯åŠ¨ffplay
+    // Æô¶¯ffplay
     STARTUPINFO si = {0};
     PROCESS_INFORMATION pi = {nullptr};
     if (CreateProcess(s.c_str(), lpParameter.data(), nullptr, nullptr, 0, 0, nullptr, nullptr, &si, &pi)) {
