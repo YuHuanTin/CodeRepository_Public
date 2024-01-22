@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+    <class>QTWindow</class>
+    <widget class="QWidget" name="QTWindow">
+        <property name="geometry">
+            <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>748</width>
+                <height>394</height>
+            </rect>
+        </property>
+        <property name="windowTitle">
+            <string>QTWindow</string>
+        </property>
+        <widget class="QChartView" name="graphicsView">
+            <property name="geometry">
+                <rect>
+                    <x>10</x>
+                    <y>10</y>
+                    <width>731</width>
+                    <height>381</height>
+                </rect>
+            </property>
+            <property name="autoFillBackground">
+                <bool>false</bool>
+            </property>
+        </widget>
+    </widget>
+    <customwidgets>
+        <customwidget>
+            <class>QChartView</class>
+            <extends>QGraphicsView</extends>
+            <header location="global">qchartview.h</header>
+        </customwidget>
+    </customwidgets>
+    <resources/>
+    <connections/>
+</ui>
