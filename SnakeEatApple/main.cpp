@@ -6,16 +6,16 @@
 #include "easyx.h"
 
 const bool DEBUG = false;
-// ´°¿Ú´óĞ¡
+// çª—å£å¤§å°
 int gWidth = 680, gHeight = 500;
 
-// ÉßµÄ³õÊ¼³¤¶È
+// è›‡çš„åˆå§‹é•¿åº¦
 const int snakeInitLen = 3;
 
-// ÉßµÄÃæ»ı 20 * 20 pixel
+// è›‡çš„é¢ç§¯ 20 * 20 pixel
 const int snakeStep = 20;
 
-// ´ú±íÉßµÄµãÎ»
+// ä»£è¡¨è›‡çš„ç‚¹ä½
 struct snakeData {
     int x = 0;
     int y = 0;
@@ -23,11 +23,11 @@ struct snakeData {
 
 class eatSnake {
 public:
-    // ³õÊ¼»¯
+    // åˆå§‹åŒ–
     eatSnake() {
         std::srand(std::time(nullptr));
 
-        // ³õÊ¼Ò»ÌõÉß
+        // åˆå§‹ä¸€æ¡è›‡
         int x = (snakeStep * std::rand()) % gWidth;
         while (x - snakeInitLen * snakeStep < 0 || x + snakeInitLen * snakeStep > gWidth) {
             x = (snakeStep * std::rand()) % gWidth;
@@ -40,23 +40,23 @@ public:
             snake.push_back({x + i * snakeStep, y});
         }
 
-        // »­Æ»¹û
+        // ç”»è‹¹æœ
         drawApple();
 
-        // »­Éß
+        // ç”»è›‡
         drawSnake();
     }
 
-    // ½øĞĞÏÂÒ»²½
+    // è¿›è¡Œä¸‹ä¸€æ­¥
     bool runNext(BYTE key) {
         if (key == 'A' || key == 'D' || key == 'W' || key == 'S')
             inputKey = key;
         else
             return true;
 
-        // ÊäÈëÒ»¸ö·½Ïò¿ªÊ¼ÓÎÏ·
+        // è¾“å…¥ä¸€ä¸ªæ–¹å‘å¼€å§‹æ¸¸æˆ
         if (inputKey != '\0') {
-            // ÒÆ¶¯Éß
+            // ç§»åŠ¨è›‡
             int nextX = snake.front().x;
             int nextY = snake.front().y;
             switch (key) {
@@ -76,7 +76,7 @@ public:
                     break;
             }
 
-            // »­³ö·ÖÊı ÅĞ¶ÏÊÇ·ñÅöµ½±ß½ç
+            // ç”»å‡ºåˆ†æ•° åˆ¤æ–­æ˜¯å¦ç¢°åˆ°è¾¹ç•Œ
             RECT text{0, 0, 200, 200};
             if (nextX < 0 || nextX >= gWidth
                 || nextY < 0 || nextY >= gHeight) {
@@ -132,7 +132,7 @@ private:
     std::list<snakeData> snake;
     BYTE inputKey = '\0';
 
-    // »­³öÏßÌõ
+    // ç”»å‡ºçº¿æ¡
     void drawLines() {
         setlinecolor(GREEN);
         for (int i = 0; i <= gWidth; i += snakeStep) {
@@ -143,7 +143,7 @@ private:
         }
     }
 
-    // »­³öÉß
+    // ç”»å‡ºè›‡
     void drawSnake() {
         setfillcolor(WHITE);
         for (auto &i: snake) {
@@ -155,7 +155,7 @@ private:
         drawLines();
     }
 
-    // »­³öÆ»¹û
+    // ç”»å‡ºè‹¹æœ
     void drawApple() {
         int x = (snakeStep * std::rand()) % gWidth;
         int y = (snakeStep * std::rand()) % gHeight;
@@ -185,7 +185,7 @@ private:
 int main() {
     setbuf(stdout, nullptr);
 
-    //³õÊ¼»¯´°¿Ú
+    //åˆå§‹åŒ–çª—å£
     initgraph(gWidth + 1, gHeight + 1, 0);
     eatSnake game;
     ExMessage msg;
@@ -199,7 +199,7 @@ int main() {
 
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(24h);
-    // ¹Ø±ÕÍ¼ĞÎÄ£Ê½
+    // å…³é—­å›¾å½¢æ¨¡å¼
     closegraph();
     return 0;
 }
