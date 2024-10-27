@@ -13,4 +13,4 @@ add_subdirectory(OpenCVProject)
 add_subdirectory(SnakeEatApple)
 add_subdirectory(ThrottleStopDriver)
 add_subdirectory(Wallpaper)
-
+add_subdirectory(RPGMakerDecrypter)
